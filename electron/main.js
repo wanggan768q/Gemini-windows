@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
 function createWindow() {
@@ -22,23 +22,6 @@ function createWindow() {
   } else {
     win.loadFile(path.join(__dirname, '../dist/index.html'));
   }
-
-  // Window Controls via IPC
-  ipcMain.on('minimize-window', () => {
-    win.minimize();
-  });
-
-  ipcMain.on('maximize-window', () => {
-    if (win.isMaximized()) {
-      win.unmaximize();
-    } else {
-      win.maximize();
-    }
-  });
-
-  ipcMain.on('close-window', () => {
-    win.close();
-  });
 
   // Open external links in browser instead of Electron window
   win.webContents.setWindowOpenHandler(({ url }) => {

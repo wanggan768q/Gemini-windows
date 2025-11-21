@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowRight, Sparkles, Key, WifiOff, RefreshCw, Loader2, Globe2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight, Sparkles, Key } from 'lucide-react';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -9,53 +9,6 @@ interface LoginScreenProps {
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onManualLogin }) => {
   const [showManual, setShowManual] = useState(false);
   const [apiKey, setApiKey] = useState('');
-  
-  // Network Check State
-  const [networkStatus, setNetworkStatus] = useState<'checking' | 'success' | 'error'>('checking');
-  const [statusMessage, setStatusMessage] = useState('Initializing...');
-
-  // Run check on mount
-  useEffect(() => {
-    checkConnectivity();
-  }, []);
-
-  const checkConnectivity = async () => {
-    setNetworkStatus('checking');
-    setStatusMessage('Checking network & region availability...');
-    
-    try {
-      const controller = new AbortController();
-      // 8 seconds timeout for connectivity check
-      const timeoutId = setTimeout(() => controller.abort(), 8000); 
-
-      // Attempt to hit the Gemini API. 
-      // Returns 400 (Bad Request) if key is invalid (but connection works).
-      // Returns 403 (Forbidden) if region is blocked or key issue.
-      // Returns Error if DNS fails or Connection Refused (Proxy needed).
-      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=TEST_CONNECTIVITY_CHECK', {
-        method: 'GET',
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-
-      // If we get a response status (even 400/403), it means we reached Google's servers.
-      if (res.status === 400 || res.ok || res.status === 403) {
-        setNetworkStatus('success');
-      } else {
-         // Even 500 errors mean we hit the server
-         setNetworkStatus('success');
-      }
-    } catch (e: any) {
-      console.error("Network check failed", e);
-      setNetworkStatus('error');
-      if (e.name === 'AbortError') {
-        setStatusMessage('Connection timed out. High latency detected.');
-      } else {
-        setStatusMessage('Unable to connect to Gemini servers.');
-      }
-    }
-  };
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,54 +17,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onManualLogin
     }
   };
 
-  // 1. Loading State
-  if (networkStatus === 'checking') {
-    return (
-        <div className="flex flex-col items-center justify-center h-full w-full bg-[#f3f3f3] dark:bg-[#202020] text-gray-900 dark:text-white transition-colors duration-300">
-            <div className="flex flex-col items-center gap-4">
-                <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 animate-pulse">{statusMessage}</p>
-            </div>
-        </div>
-    );
-  }
-
-  // 2. Error State (Offline/Blocked)
-  if (networkStatus === 'error') {
-    return (
-        <div className="flex flex-col items-center justify-center h-full w-full bg-[#f3f3f3] dark:bg-[#202020] text-gray-900 dark:text-white transition-colors duration-300">
-           <div className="w-full max-w-md p-8 rounded-2xl bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-red-200 dark:border-red-900/50 shadow-2xl animate-in fade-in zoom-in duration-300">
-              <div className="flex flex-col items-center text-center space-y-6">
-                 <div className="bg-red-100 dark:bg-red-900/30 p-4 rounded-full text-red-600 dark:text-red-400">
-                    <WifiOff size={32} />
-                 </div>
-                 <div className="space-y-2">
-                    <h2 className="text-xl font-semibold">Access Restricted</h2>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                       {statusMessage}
-                    </p>
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/30 p-3 rounded-lg mt-2">
-                        <p className="text-xs text-yellow-700 dark:text-yellow-500 text-left">
-                            <strong>Region Check Failed:</strong> Please ensure your network complies with Google's geographic policies. You may need a VPN/Proxy targeting US/Singapore regions.
-                        </p>
-                    </div>
-                 </div>
-                 <div className="flex gap-3 w-full">
-                    <button 
-                        onClick={checkConnectivity}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-medium transition-all"
-                    >
-                        <RefreshCw size={16} />
-                        Retry Connection
-                    </button>
-                 </div>
-              </div>
-           </div>
-        </div>
-    );
-  }
-
-  // 3. Success State (Show Login)
   return (
     <div className="flex flex-col items-center justify-center h-full w-full bg-[#f3f3f3] dark:bg-[#202020] text-gray-900 dark:text-white transition-colors duration-300">
       <div className="w-full max-w-md p-8 rounded-2xl bg-white/50 dark:bg-white/5 backdrop-blur-xl border border-white/20 shadow-2xl animate-in fade-in zoom-in duration-500">
@@ -130,11 +35,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onManualLogin
           
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight">Welcome to Gemini</h1>
-            <div className="flex items-center justify-center gap-2 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 py-1.5 px-3 rounded-full w-fit mx-auto border border-green-100 dark:border-green-900/30">
-                <Globe2 size={12} />
-                <span>Service Region Available</span>
-            </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 pt-2">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Enter your API key to continue
             </p>
           </div>
