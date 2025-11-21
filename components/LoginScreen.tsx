@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Sparkles, Key, WifiOff, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowRight, Sparkles, Key, WifiOff, RefreshCw, Loader2, Globe2 } from 'lucide-react';
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -12,7 +12,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onManualLogin
   
   // Network Check State
   const [networkStatus, setNetworkStatus] = useState<'checking' | 'success' | 'error'>('checking');
-  const [statusMessage, setStatusMessage] = useState('Connecting to Google services...');
+  const [statusMessage, setStatusMessage] = useState('Initializing...');
 
   // Run check on mount
   useEffect(() => {
@@ -21,30 +21,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onManualLogin
 
   const checkConnectivity = async () => {
     setNetworkStatus('checking');
-    setStatusMessage('Checking network availability...');
+    setStatusMessage('Checking network & region availability...');
     
     try {
       const controller = new AbortController();
-      // 8 seconds timeout
+      // 8 seconds timeout for connectivity check
       const timeoutId = setTimeout(() => controller.abort(), 8000); 
 
-      // We attempt to fetch the models endpoint with a dummy key.
-      // If we get a response (even 400 Bad Request or 403), it means we successfully reached Google servers.
-      // If we timeout or get a network error, we are likely offline or blocked.
+      // Attempt to hit the Gemini API. 
+      // Returns 400 (Bad Request) if key is invalid (but connection works).
+      // Returns 403 (Forbidden) if region is blocked or key issue.
+      // Returns Error if DNS fails or Connection Refused (Proxy needed).
       const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=TEST_CONNECTIVITY_CHECK', {
         method: 'GET',
         signal: controller.signal,
-        headers: {
-            // Simple GET request usually avoids complex CORS preflight, but headers help context
-            'Content-Type': 'application/json'
-        }
       });
       
       clearTimeout(timeoutId);
 
-      // 400 = Bad Request (Invalid Key) -> Server is reachable
-      // 200 = OK (Unlikely with dummy key) -> Server is reachable
-      // 403 = Forbidden (Region block or Key issue) -> Server is reachable
+      // If we get a response status (even 400/403), it means we reached Google's servers.
       if (res.status === 400 || res.ok || res.status === 403) {
         setNetworkStatus('success');
       } else {
@@ -55,9 +50,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onManualLogin
       console.error("Network check failed", e);
       setNetworkStatus('error');
       if (e.name === 'AbortError') {
-        setStatusMessage('Connection timed out. Please check your network speed or proxy/VPN.');
+        setStatusMessage('Connection timed out. High latency detected.');
       } else {
-        setStatusMessage('Unable to connect to Gemini servers. Your region might be restricted.');
+        setStatusMessage('Unable to connect to Gemini servers.');
       }
     }
   };
@@ -91,13 +86,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onManualLogin
                     <WifiOff size={32} />
                  </div>
                  <div className="space-y-2">
-                    <h2 className="text-xl font-semibold">Connection Failed</h2>
+                    <h2 className="text-xl font-semibold">Access Restricted</h2>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                        {statusMessage}
                     </p>
                     <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/30 p-3 rounded-lg mt-2">
                         <p className="text-xs text-yellow-700 dark:text-yellow-500 text-left">
-                            <strong>Tip:</strong> Google Gemini APIs are blocked in some countries (e.g., CN). Please ensure your system proxy or VPN is enabled and routing traffic for <code>generativelanguage.googleapis.com</code>.
+                            <strong>Region Check Failed:</strong> Please ensure your network complies with Google's geographic policies. You may need a VPN/Proxy targeting US/Singapore regions.
                         </p>
                     </div>
                  </div>
@@ -135,9 +130,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onManualLogin
           
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight">Welcome to Gemini</h1>
-            <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 py-1 px-3 rounded-full w-fit mx-auto">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Network Connected
+            <div className="flex items-center justify-center gap-2 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 py-1.5 px-3 rounded-full w-fit mx-auto border border-green-100 dark:border-green-900/30">
+                <Globe2 size={12} />
+                <span>Service Region Available</span>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 pt-2">
               Enter your API key to continue
