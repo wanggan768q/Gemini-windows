@@ -1,25 +1,57 @@
 {
-  "name": "copy-of-gemini-desktop-client",
+  "name": "gemini-desktop-client",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "1.1.0",
+  "description": "A native Windows-style Gemini client",
+  "author": "Gemini User",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "electron:dev": "concurrently \"npm run dev\" \"electron .\"",
+    "electron:build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.gemini.desktop",
+    "productName": "Gemini Desktop",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "dependencies": {
-    "react": "^19.2.0",
-    "react-markdown": "^10.1.0",
-    "@google/genai": "^1.30.0",
-    "lucide-react": "^0.554.0",
-    "uuid": "^13.0.0",
-    "react-dom": "^19.2.0"
+    "@google/genai": "^0.1.1",
+    "lucide-react": "^0.344.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^9.0.1",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@types/node": "^20.11.24",
+    "@types/react": "^18.2.61",
+    "@types/react-dom": "^18.2.19",
+    "@types/uuid": "^9.0.8",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.18",
+    "concurrently": "^8.2.2",
+    "electron": "^29.1.0",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.4"
   }
 }

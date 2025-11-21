@@ -22,7 +22,6 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   
-  // We need to keep track of the active Chat object from the SDK
   const chatInstances = useRef<Map<string, Chat>>(new Map());
   const currentSessionIdRef = useRef<string | null>(null);
 
@@ -36,12 +35,21 @@ export default function App() {
       setTheme('dark');
     }
 
-    // Auth check using window.aistudio
+    // Auth check: Check AI Studio OR Local Storage
     const checkAuth = async () => {
       try {
-        const hasKey = await (window as any).aistudio?.hasSelectedApiKey();
-        if (hasKey) {
+        // Check if manual key exists
+        if (localStorage.getItem('gemini_api_key')) {
           setIsAuthenticated(true);
+          return;
+        }
+
+        // Check AI Studio environment
+        if ((window as any).aistudio) {
+            const hasKey = await (window as any).aistudio.hasSelectedApiKey();
+            if (hasKey) {
+              setIsAuthenticated(true);
+            }
         }
       } catch (e) {
         console.error("Auth check failed", e);
@@ -61,7 +69,7 @@ export default function App() {
     localStorage.setItem('gemini-desktop-theme', theme);
   }, [theme]);
 
-  // Load sessions from local storage on mount
+  // Load sessions from local storage
   useEffect(() => {
     const saved = localStorage.getItem('gemini-desktop-sessions');
     if (saved) {
@@ -84,30 +92,44 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Save sessions to local storage whenever they change
   useEffect(() => {
     if (sessions.length > 0) {
         localStorage.setItem('gemini-desktop-sessions', JSON.stringify(sessions));
     }
   }, [sessions]);
 
+  // Handle Google Sign In (Web Env)
   const handleLogin = async () => {
     try {
-      const success = await (window as any).aistudio?.openSelectKey();
-      if (success) {
-        setIsAuthenticated(true);
-        // Re-initialize current chat if it exists to pick up new key
-        if (currentSessionId) {
-            const session = sessions.find(s => s.id === currentSessionId);
-            if (session) {
-               chatInstances.current.set(currentSessionId, createChatSession(session.model));
-            }
+      if ((window as any).aistudio) {
+        const success = await (window as any).aistudio.openSelectKey();
+        if (success) {
+          setIsAuthenticated(true);
+          refreshChatInstance();
         }
+      } else {
+        alert("Google Sign-In is only available in the web editor. Please use manual entry.");
       }
     } catch (e) {
       console.error("Login failed", e);
     }
   };
+
+  // Handle Manual Key Entry (Electron/Local Env)
+  const handleManualLogin = (key: string) => {
+    localStorage.setItem('gemini_api_key', key);
+    setIsAuthenticated(true);
+    refreshChatInstance();
+  };
+
+  const refreshChatInstance = () => {
+    if (currentSessionId) {
+      const session = sessions.find(s => s.id === currentSessionId);
+      if (session) {
+         chatInstances.current.set(currentSessionId, createChatSession(session.model));
+      }
+    }
+  }
 
   const handleNewChat = useCallback(() => {
     const newId = generateId();
@@ -123,9 +145,14 @@ export default function App() {
     setCurrentSessionId(newId);
     currentSessionIdRef.current = newId;
     
-    // Initialize SDK Chat instance
-    chatInstances.current.set(newId, createChatSession(DEFAULT_MODEL));
-  }, []);
+    if (isAuthenticated) {
+      try {
+        chatInstances.current.set(newId, createChatSession(DEFAULT_MODEL));
+      } catch (e) {
+        // Ignore initialization errors if key is invalid, will be caught on send
+      }
+    }
+  }, [isAuthenticated]);
 
   const handleDeleteSession = useCallback((id: string) => {
     setSessions(prev => {
@@ -155,8 +182,10 @@ export default function App() {
         return s;
     }));
 
-    chatInstances.current.set(currentSessionId, createChatSession(modelId));
-  }, [currentSessionId]);
+    if (isAuthenticated) {
+      chatInstances.current.set(currentSessionId, createChatSession(modelId));
+    }
+  }, [currentSessionId, isAuthenticated]);
 
   const handleSendMessage = useCallback(async (text: string, modelId: string) => {
     if (!currentSessionId) return;
@@ -232,22 +261,23 @@ export default function App() {
     } catch (error: any) {
       console.error(error);
       
-      // Handle Auth Errors gracefully
-      if (error.message && error.message.includes('Requested entity was not found')) {
-         setIsAuthenticated(false); // Force re-login
+      // Handle Auth Errors
+      if (error.message && (error.message.includes('Requested entity was not found') || error.message.includes('API key'))) {
+         setIsAuthenticated(false); 
+         localStorage.removeItem('gemini_api_key');
       }
 
        setSessions(prev => prev.map(s => {
         if (s.id === currentSessionId) {
              const msgs = [...s.messages];
-             return { ...s, messages: [...msgs, { id: generateId(), role: Role.MODEL, text: "Error: Failed to generate response. Please check your connection or sign in again.", timestamp: Date.now(), isError: true }] };
+             return { ...s, messages: [...msgs, { id: generateId(), role: Role.MODEL, text: "Error: Failed to generate response. Please check your API Key.", timestamp: Date.now(), isError: true }] };
         }
         return s;
       }));
     } finally {
       setIsLoading(false);
     }
-  }, [currentSessionId, sessions]);
+  }, [currentSessionId, sessions, isAuthenticated]);
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
 
@@ -257,7 +287,7 @@ export default function App() {
       
       {!isAuthenticated ? (
         <div className="flex-1 relative overflow-hidden">
-           <LoginScreen onLogin={handleLogin} />
+           <LoginScreen onLogin={handleLogin} onManualLogin={handleManualLogin} />
         </div>
       ) : (
         <div className="flex flex-1 overflow-hidden relative">

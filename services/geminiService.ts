@@ -1,13 +1,21 @@
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
-import { ChatMessage, Role } from '../types';
 import { SYSTEM_INSTRUCTION } from '../constants';
 
-// We do not cache the client anymore to ensure it picks up the latest API KEY
-// which might be set after the user logs in/selects a key.
+// Helper to get key from various sources
+const getApiKey = (): string => {
+  // 1. Try process.env (injected by build or env var)
+  if (process.env.API_KEY) return process.env.API_KEY;
+  
+  // 2. Try Local Storage (Manual entry in Electron/Web)
+  const storedKey = localStorage.getItem('gemini_api_key');
+  if (storedKey) return storedKey;
+  
+  throw new Error("No API Key found. Please sign in.");
+};
+
 const getClient = (): GoogleGenAI => {
-  // Using process.env.API_KEY directly as per guidelines.
-  // This environment variable is updated when window.aistudio.openSelectKey() completes.
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = getApiKey();
+  return new GoogleGenAI({ apiKey });
 };
 
 export const createChatSession = (modelId: string) => {
