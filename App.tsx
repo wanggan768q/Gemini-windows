@@ -2,14 +2,14 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { TitleBar } from './components/TitleBar';
 import { Sidebar } from './components/Sidebar';
 import { ChatWindow } from './components/ChatWindow';
+import { LoginScreen } from './components/LoginScreen';
 import { createChatSession, sendMessageStream, generateTitle } from './services/geminiService';
 import { ChatSession, ChatMessage, Role } from './types';
 import { DEFAULT_MODEL } from './constants';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Chat } from '@google/genai';
 
-// Simple UUID generator for browser environment without external deps if needed, 
-// but strictly adhering to instructions, I'll use a simple math random for this demo to avoid unlisted deps.
+// Simple UUID generator
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
 export default function App() {
@@ -18,10 +18,48 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   
+  // Auth & Theme state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  
   // We need to keep track of the active Chat object from the SDK
   const chatInstances = useRef<Map<string, Chat>>(new Map());
-  // Helper ref to access current session ID inside async callbacks if needed
   const currentSessionIdRef = useRef<string | null>(null);
+
+  // Initialize theme and auth check
+  useEffect(() => {
+    // Theme check
+    const savedTheme = localStorage.getItem('gemini-desktop-theme') as 'light' | 'dark' | null;
+    if (savedTheme) {
+      setTheme(savedTheme);
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme('dark');
+    }
+
+    // Auth check using window.aistudio
+    const checkAuth = async () => {
+      try {
+        const hasKey = await (window as any).aistudio?.hasSelectedApiKey();
+        if (hasKey) {
+          setIsAuthenticated(true);
+        }
+      } catch (e) {
+        console.error("Auth check failed", e);
+      }
+    };
+    checkAuth();
+  }, []);
+
+  // Apply theme class to html
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('gemini-desktop-theme', theme);
+  }, [theme]);
 
   // Load sessions from local storage on mount
   useEffect(() => {
@@ -53,6 +91,24 @@ export default function App() {
     }
   }, [sessions]);
 
+  const handleLogin = async () => {
+    try {
+      const success = await (window as any).aistudio?.openSelectKey();
+      if (success) {
+        setIsAuthenticated(true);
+        // Re-initialize current chat if it exists to pick up new key
+        if (currentSessionId) {
+            const session = sessions.find(s => s.id === currentSessionId);
+            if (session) {
+               chatInstances.current.set(currentSessionId, createChatSession(session.model));
+            }
+        }
+      }
+    } catch (e) {
+      console.error("Login failed", e);
+    }
+  };
+
   const handleNewChat = useCallback(() => {
     const newId = generateId();
     const newSession: ChatSession = {
@@ -79,17 +135,15 @@ export default function App() {
           setCurrentSessionId(filtered[0].id);
           currentSessionIdRef.current = filtered[0].id;
         } else {
-          // Don't call handleNewChat directly here to avoid loop if not careful, just clear current
            setCurrentSessionId(null);
            currentSessionIdRef.current = null;
-           // Defer creation of new chat
            setTimeout(() => handleNewChat(), 0);
         }
       }
       return filtered;
     });
     chatInstances.current.delete(id);
-  }, [handleNewChat]); // Added dependency
+  }, [handleNewChat]);
 
   const handleModelChange = useCallback((modelId: string) => {
     if (!currentSessionId) return;
@@ -101,9 +155,6 @@ export default function App() {
         return s;
     }));
 
-    // Re-initialize chat instance with new model. 
-    // Note: This effectively resets the context for the SDK side, 
-    // but we keep UI history. In a full app, you might want to send history to the new model.
     chatInstances.current.set(currentSessionId, createChatSession(modelId));
   }, [currentSessionId]);
 
@@ -118,7 +169,6 @@ export default function App() {
       timestamp: Date.now()
     };
 
-    // Update UI immediately with user message
     setSessions(prev => prev.map(s => {
       if (s.id === currentSessionId) {
         return {
@@ -132,7 +182,6 @@ export default function App() {
 
     setIsLoading(true);
 
-    // Generate title if it's the first message
     const currentSession = sessions.find(s => s.id === currentSessionId);
     if (currentSession && currentSession.messages.length === 0) {
         generateTitle(text).then(title => {
@@ -147,12 +196,11 @@ export default function App() {
         chatInstances.current.set(currentSessionId, chat);
       }
 
-      // Create placeholder for model response
       const modelMsgId = generateId();
       const newModelMsg: ChatMessage = {
         id: modelMsgId,
         role: Role.MODEL,
-        text: '', // Start empty
+        text: '',
         timestamp: Date.now()
       };
 
@@ -168,7 +216,6 @@ export default function App() {
 
       for await (const chunk of stream) {
         fullText += chunk;
-        // Functional update to append text to the specific message
         setSessions(prev => prev.map(s => {
           if (s.id === currentSessionId) {
             const msgs = [...s.messages];
@@ -182,64 +229,74 @@ export default function App() {
         }));
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      // Mark error state on last message or add error message
+      
+      // Handle Auth Errors gracefully
+      if (error.message && error.message.includes('Requested entity was not found')) {
+         setIsAuthenticated(false); // Force re-login
+      }
+
        setSessions(prev => prev.map(s => {
         if (s.id === currentSessionId) {
              const msgs = [...s.messages];
-             // Check if we added a placeholder model message, if so, mark it as error or remove it?
-             // Let's just append an error system message for simplicity in this demo
-             return { ...s, messages: [...msgs, { id: generateId(), role: Role.MODEL, text: "Sorry, I encountered an error processing your request.", timestamp: Date.now(), isError: true }] };
+             return { ...s, messages: [...msgs, { id: generateId(), role: Role.MODEL, text: "Error: Failed to generate response. Please check your connection or sign in again.", timestamp: Date.now(), isError: true }] };
         }
         return s;
       }));
     } finally {
       setIsLoading(false);
     }
-  }, [currentSessionId, sessions]); // Added sessions to dependency
+  }, [currentSessionId, sessions]);
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-windows-bg text-gray-900 font-sans overflow-hidden selection:bg-blue-200">
+    <div className="flex flex-col h-screen w-screen bg-windows-bg dark:bg-windows-dark-bg text-gray-900 dark:text-gray-100 font-sans overflow-hidden selection:bg-blue-200 dark:selection:bg-blue-900 transition-colors duration-300">
       <TitleBar />
       
-      <div className="flex flex-1 overflow-hidden relative">
-        <Sidebar 
-          sessions={sessions}
-          currentSessionId={currentSessionId}
-          onSelectSession={(id) => { setCurrentSessionId(id); currentSessionIdRef.current = id; }}
-          onNewChat={handleNewChat}
-          onDeleteSession={handleDeleteSession}
-          isOpen={sidebarOpen}
-        />
-        
-        <div className="flex-1 flex flex-col h-full relative shadow-xl z-10">
-            {/* Sidebar Toggle - Floating or integrated? Let's put it in the chat header area conceptually, or floating */}
-            <button 
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="absolute top-3 left-3 z-50 p-1.5 bg-white/80 hover:bg-white rounded-md shadow-sm border border-gray-200 text-gray-500 transition-all"
-                title="Toggle Sidebar"
-            >
-                {sidebarOpen ? <PanelLeftClose size={16}/> : <PanelLeftOpen size={16}/>}
-            </button>
-
-            {currentSession ? (
-              <ChatWindow 
-                messages={currentSession.messages}
-                onSendMessage={handleSendMessage}
-                isLoading={isLoading}
-                currentModelId={currentSession.model}
-                onModelChange={handleModelChange}
-              />
-            ) : (
-               <div className="flex-1 flex items-center justify-center bg-gray-50">
-                   <button onClick={handleNewChat} className="text-blue-600 hover:underline">Start a new chat</button>
-               </div>
-            )}
+      {!isAuthenticated ? (
+        <div className="flex-1 relative overflow-hidden">
+           <LoginScreen onLogin={handleLogin} />
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-1 overflow-hidden relative">
+          <Sidebar 
+            sessions={sessions}
+            currentSessionId={currentSessionId}
+            onSelectSession={(id) => { setCurrentSessionId(id); currentSessionIdRef.current = id; }}
+            onNewChat={handleNewChat}
+            onDeleteSession={handleDeleteSession}
+            isOpen={sidebarOpen}
+            theme={theme}
+            onToggleTheme={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+          />
+          
+          <div className="flex-1 flex flex-col h-full relative shadow-xl z-10">
+              <button 
+                  onClick={() => setSidebarOpen(!sidebarOpen)}
+                  className="absolute top-3 left-3 z-50 p-1.5 bg-white/80 dark:bg-[#2c2c2c]/80 hover:bg-white dark:hover:bg-[#3a3a3a] rounded-md shadow-sm border border-gray-200 dark:border-[#444] text-gray-500 dark:text-gray-400 transition-all"
+                  title="Toggle Sidebar"
+              >
+                  {sidebarOpen ? <PanelLeftClose size={16}/> : <PanelLeftOpen size={16}/>}
+              </button>
+
+              {currentSession ? (
+                <ChatWindow 
+                  messages={currentSession.messages}
+                  onSendMessage={handleSendMessage}
+                  isLoading={isLoading}
+                  currentModelId={currentSession.model}
+                  onModelChange={handleModelChange}
+                />
+              ) : (
+                 <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-[#202020]">
+                     <button onClick={handleNewChat} className="text-blue-600 hover:underline dark:text-blue-400">Start a new chat</button>
+                 </div>
+              )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

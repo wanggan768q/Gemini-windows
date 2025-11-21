@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -19,8 +20,16 @@
                 accent: '#0078d4',
                 hover: '#e5e5e5',
                 border: '#e5e5e5',
-                dark: '#202020',
-                darkGlass: 'rgba(32, 32, 32, 0.8)',
+                // Dark mode colors
+                dark: {
+                  bg: '#202020',
+                  surface: '#2c2c2c',
+                  glass: 'rgba(32, 32, 32, 0.8)',
+                  hover: '#3a3a3a',
+                  border: '#333333',
+                  text: '#ffffff',
+                  subtext: '#a0a0a0'
+                }
               }
             }
           },
@@ -40,12 +49,40 @@
         background: #ccc;
         border-radius: 3px;
       }
+      .dark ::-webkit-scrollbar-thumb {
+        background: #555;
+      }
       ::-webkit-scrollbar-thumb:hover {
         background: #999;
+      }
+      .dark ::-webkit-scrollbar-thumb:hover {
+        background: #777;
       }
       body {
         background-color: #f3f3f3;
         overflow: hidden; /* Prevent body scroll, handle in app */
+      }
+      .dark body {
+        background-color: #202020;
+      }
+      
+      /* Markdown styles for dark mode */
+      .dark .prose {
+        color: #e5e5e5;
+      }
+      .dark .prose strong {
+        color: #fff;
+      }
+      .dark .prose code {
+        color: #e5e5e5;
+        background-color: #3a3a3a;
+      }
+      .dark .prose pre {
+        background-color: #1e1e1e;
+        border: 1px solid #333;
+      }
+      .dark .prose a {
+        color: #60a5fa;
       }
     </style>
   <script type="importmap">

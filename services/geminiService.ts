@@ -2,15 +2,12 @@ import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
 import { ChatMessage, Role } from '../types';
 import { SYSTEM_INSTRUCTION } from '../constants';
 
-// Singleton-like pattern for the AI client, initialized lazily or reused
-let aiClient: GoogleGenAI | null = null;
-
+// We do not cache the client anymore to ensure it picks up the latest API KEY
+// which might be set after the user logs in/selects a key.
 const getClient = (): GoogleGenAI => {
-  if (!aiClient) {
-    // Using process.env.API_KEY directly as per guidelines
-    aiClient = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  }
-  return aiClient;
+  // Using process.env.API_KEY directly as per guidelines.
+  // This environment variable is updated when window.aistudio.openSelectKey() completes.
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 export const createChatSession = (modelId: string) => {

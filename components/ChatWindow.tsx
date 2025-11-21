@@ -59,19 +59,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white/50 relative">
+    <div className="flex flex-col h-full bg-white/50 dark:bg-[#202020] relative transition-colors duration-300">
       
       {/* Header / Model Selector */}
-      <div className="h-14 border-b border-gray-200 flex items-center justify-between px-6 bg-white/80 backdrop-blur-md sticky top-0 z-10">
+      <div className="h-14 border-b border-gray-200 dark:border-[#333] flex items-center justify-between px-6 bg-white/80 dark:bg-[#202020]/95 backdrop-blur-md sticky top-0 z-10 transition-colors">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-500">Model:</span>
+          <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Model:</span>
           <select 
             value={currentModelId}
             onChange={(e) => onModelChange(e.target.value)}
-            className="bg-transparent font-semibold text-gray-800 text-sm focus:outline-none cursor-pointer hover:text-blue-600 transition-colors"
+            className="bg-transparent font-semibold text-gray-800 dark:text-gray-200 text-sm focus:outline-none cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             {AVAILABLE_MODELS.map(m => (
-              <option key={m.id} value={m.id}>{m.name}</option>
+              <option key={m.id} value={m.id} className="dark:bg-[#2c2c2c]">{m.name}</option>
             ))}
           </select>
         </div>
@@ -81,8 +81,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       <div className="flex-1 overflow-y-auto p-4 scroll-smooth space-y-6 custom-scrollbar">
         {messages.length === 0 && (
            <div className="h-full flex flex-col items-center justify-center opacity-30 select-none">
-             <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" alt="Gemini" className="w-24 h-24 mb-4 grayscale" />
-             <p className="text-xl font-semibold">How can I help you today?</p>
+             <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" alt="Gemini" className="w-24 h-24 mb-4 grayscale dark:invert" />
+             <p className="text-xl font-semibold text-gray-900 dark:text-gray-100">How can I help you today?</p>
            </div>
         )}
 
@@ -96,7 +96,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               {/* Avatar */}
               <div className={`
                 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1 shadow-sm
-                ${msg.role === Role.USER ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200'}
+                ${msg.role === Role.USER ? 'bg-blue-600 text-white' : 'bg-white dark:bg-[#2c2c2c] border border-gray-200 dark:border-[#444]'}
               `}>
                 {msg.role === Role.USER ? <User size={16} /> : <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" className="w-5 h-5" />}
               </div>
@@ -106,10 +106,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm relative group
                 ${msg.role === Role.USER 
                   ? 'bg-blue-600 text-white rounded-tr-none' 
-                  : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none'}
+                  : 'bg-white dark:bg-[#2c2c2c] border border-gray-200 dark:border-[#333] text-gray-800 dark:text-gray-100 rounded-tl-none'}
               `}>
                  {msg.role === Role.MODEL ? (
-                    <div className="markdown-body prose prose-sm max-w-none prose-slate">
+                    <div className="markdown-body prose prose-sm max-w-none prose-slate dark:prose-invert">
                       <ReactMarkdown>{msg.text}</ReactMarkdown>
                     </div>
                  ) : (
@@ -130,10 +130,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
         {isLoading && (
           <div className="flex justify-start w-full">
             <div className="flex gap-3 max-w-[75%]">
-               <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-sm">
+               <div className="w-8 h-8 rounded-full bg-white dark:bg-[#2c2c2c] border border-gray-200 dark:border-[#444] flex items-center justify-center shadow-sm">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/8/8a/Google_Gemini_logo.svg" className="w-5 h-5 animate-pulse" />
                </div>
-               <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
+               <div className="bg-white dark:bg-[#2c2c2c] border border-gray-200 dark:border-[#333] px-4 py-3 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
@@ -146,16 +146,16 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-white/80 backdrop-blur-md border-t border-gray-200">
+      <div className="p-4 bg-white/80 dark:bg-[#202020]/95 backdrop-blur-md border-t border-gray-200 dark:border-[#333] transition-colors">
         <div className="max-w-4xl mx-auto relative">
-          <div className="relative flex items-end gap-2 bg-white border border-gray-300 rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all p-2">
+          <div className="relative flex items-end gap-2 bg-white dark:bg-[#2c2c2c] border border-gray-300 dark:border-[#444] rounded-2xl shadow-sm focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 dark:focus-within:border-blue-400 transition-all p-2">
             <textarea
               ref={textareaRef}
               value={inputValue}
               onChange={handleInput}
               onKeyDown={handleKeyDown}
               placeholder="Ask Gemini..."
-              className="w-full max-h-32 bg-transparent border-none resize-none focus:ring-0 py-2 px-2 text-gray-800 text-sm placeholder-gray-400"
+              className="w-full max-h-32 bg-transparent border-none resize-none focus:ring-0 py-2 px-2 text-gray-800 dark:text-gray-100 text-sm placeholder-gray-400 dark:placeholder-gray-500"
               rows={1}
             />
             <button 
@@ -164,7 +164,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               className={`
                 p-2 rounded-xl mb-0.5 transition-all duration-200
                 ${!inputValue.trim() || isLoading 
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                  ? 'bg-gray-100 dark:bg-[#3a3a3a] text-gray-400 dark:text-gray-500 cursor-not-allowed' 
                   : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'}
               `}
             >
@@ -172,7 +172,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
             </button>
           </div>
           <div className="text-center mt-2">
-            <span className="text-[10px] text-gray-400">
+            <span className="text-[10px] text-gray-400 dark:text-gray-600">
               Gemini can make mistakes. Review generated info.
             </span>
           </div>
